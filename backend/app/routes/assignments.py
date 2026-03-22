@@ -6,6 +6,7 @@ from datetime import datetime
 import random
 from app import db
 from app.models.models import Person, Task, Assignment
+from sqlalchemy.orm import joinedload
 
 assignments_bp = Blueprint('assignments', __name__)
 
@@ -105,11 +106,18 @@ def generate_assignments():
     
     db.session.commit()
     
+    # Get IDs of newly created assignments for fresh query
+    assignment_ids = [a.id for a in new_assignments]
+    
+    # Fresh query with joined relationships loaded eagerly
+    fresh_assignments = Assignment.query.options(
+        joinedload(Assignment.person),
+        joinedload(Assignment.task)
+    ).filter(Assignment.id.in_(assignment_ids)).all()
+    
     # Format response after commit - query fresh data with joined relationships
     assignments_by_person = {}
-    for a in new_assignments:
-        # Reload the assignment with relationships
-        assignment = Assignment.query.filter_by(id=a.id).first()
+    for assignment in fresh_assignments:
         if assignment:
             pid = assignment.person_id
             if pid not in assignments_by_person:
