@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   home-tasks:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     container_name: home-tasks
     ports:
