@@ -103,9 +103,7 @@ def generate_assignments():
         # Update effort tracking
         effort_tracking[selected_person.id] += task.effort_points
     
-    db.session.commit()
-    
-    # Format response
+    # Format response BEFORE commit (while session is still active)
     assignments_by_person = {}
     for a in new_assignments:
         pid = a.person_id
@@ -116,12 +114,14 @@ def generate_assignments():
                 'tasks': [],
                 'total_effort': 0
             }
-        assignments_by_person[pid]['tasks'].append({
+        assignments_by_person[int(pid)]['tasks'].append({
             'id': a.task.id,
             'name': a.task.name,
             'effort_points': a.task.effort_points
         })
         assignments_by_person[pid]['total_effort'] += a.task.effort_points
+    
+    db.session.commit()
     
     return jsonify({
         'success': True,
