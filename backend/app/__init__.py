@@ -30,9 +30,10 @@ def create_app(config_name=None):
     
     # Initialize extensions
     db.init_app(app)
-    
+
     # Create tables
     with app.app_context():
+        db.create_all()
         from app.utils.database import init_db
         init_db()
     
