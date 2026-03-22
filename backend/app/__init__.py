@@ -1,18 +1,13 @@
-"""
-Flask application factory.
-"""
+""" Flask application factory. """
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import os
 
 db = SQLAlchemy()
 
-
 def create_app(config_name=None):
     """Create and configure the Flask application."""
-    app = Flask(__name__, 
-                static_folder='../frontend',
-                static_url_path='')
+    app = Flask(__name__, static_folder='../frontend', static_url_path='')
     
     # Load configuration
     if config_name is None:
@@ -30,18 +25,18 @@ def create_app(config_name=None):
     
     # Initialize extensions
     db.init_app(app)
-
+    
+    # CRITICAL: Import models BEFORE creating tables
+    from app.models.models import Person, Task, Assignment
+    
     # Create tables
     with app.app_context():
         db.create_all()
-        from app.utils.database import init_db
-        init_db()
     
     # Register blueprints
     from app.routes.persons import persons_bp
     from app.routes.tasks import tasks_bp
     from app.routes.assignments import assignments_bp
-    
     app.register_blueprint(persons_bp, url_prefix='/api/persons')
     app.register_blueprint(tasks_bp, url_prefix='/api/tasks')
     app.register_blueprint(assignments_bp, url_prefix='/api/assignments')
