@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import random
-import traceback
+import sys
 from app import db
 from app.models.models import Person, Task, Assignment
 
@@ -136,7 +136,6 @@ def generate_assignments():
         
     except Exception as e:
         db.session.rollback()
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @assignments_bp.route('/<int:assignment_id>', methods=['DELETE'])
