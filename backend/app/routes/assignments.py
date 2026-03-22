@@ -103,25 +103,29 @@ def generate_assignments():
         # Update effort tracking
         effort_tracking[selected_person.id] += task.effort_points
     
-    # Format response BEFORE commit (while session is still active)
+    db.session.commit()
+    
+    # Format response after commit - query fresh data with joined relationships
     assignments_by_person = {}
     for a in new_assignments:
-        pid = a.person_id
-        if pid not in assignments_by_person:
-            assignments_by_person[pid] = {
-                'person_id': pid,
-                'person_name': a.person.name,
-                'tasks': [],
-                'total_effort': 0
-            }
-        assignments_by_person[int(pid)]['tasks'].append({
-            'id': a.task.id,
-            'name': a.task.name,
-            'effort_points': a.task.effort_points
-        })
-        assignments_by_person[pid]['total_effort'] += a.task.effort_points
-    
-    db.session.commit()
+        # Reload the assignment with relationships
+        assignment = Assignment.query.filter_by(id=a.id).first()
+        if assignment:
+            pid = assignment.person_id
+            if pid not in assignments_by_person:
+                assignments_by_person[pid] = {
+                    'person_id': pid,
+                    'person_name': assignment.person.name if assignment.person else 'Unknown',
+                    'tasks': [],
+                    'total_effort': 0
+                }
+            if assignment.task:
+                assignments_by_person[pid]['tasks'].append({
+                    'id': assignment.task.id,
+                    'name': assignment.task.name,
+                    'effort_points': assignment.task.effort_points
+                })
+                assignments_by_person[pid]['total_effort'] += assignment.task.effort_points
     
     return jsonify({
         'success': True,
