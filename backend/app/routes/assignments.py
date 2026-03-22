@@ -34,7 +34,11 @@ def get_current_assignments():
 def generate_assignments():
     """Generate new random assignments."""
     try:
-        data = request.get_json() or {}
+        # Handle empty body or missing Content-Type
+        if request.content_length == 0 or request.content_type is None:
+            data = {}
+        else:
+            data = request.get_json(silent=True) or {}
         clear_previous = data.get('clear_previous', True)
         
         # Get active persons and tasks
