@@ -17,11 +17,11 @@ serviceAccount:
 podAnnotations: {}
 
 podSecurityContext:
-  fsGroup: 1000
+  fsGroup: 999
 
 securityContext:
   runAsNonRoot: true
-  runAsUser: 1000
+  runAsUser: 999
   allowPrivilegeEscalation: false
   capabilities:
     drop:

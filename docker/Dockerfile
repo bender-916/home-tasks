@@ -35,8 +35,8 @@ LABEL org.opencontainers.image.title="Home Tasks" \
       org.opencontainers.image.created="${BUILD_DATE}"
 
 # Create non-root user
-RUN groupadd -g 1000 apptask && \
-    useradd -r -u 1000 -g apptask -d /app -s /sbin/nologin apptask
+RUN groupadd -g 999 apptask && \
+    useradd -r -u 999 -g apptask -d /app -s /sbin/nologin apptask
 
 WORKDIR /app
 
