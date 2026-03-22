@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import random
+import traceback
 from app import db
 from app.models.models import Person, Task, Assignment
 
@@ -153,3 +154,14 @@ def complete_assignment(assignment_id):
             'completed_at': assignment.completed_at.isoformat() + 'Z'
         }
     })
+
+@assignments_bp.route('/reset', methods=['POST'])
+def reset_assignments():
+    """Debug endpoint to reset all assignments."""
+    try:
+        Assignment.query.delete()
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Todas las asignaciones eliminadas'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
