@@ -2,7 +2,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import random
-import sys
 from app import db
 from app.models.models import Person, Task, Assignment
 
@@ -33,110 +32,102 @@ def get_current_assignments():
 
 @assignments_bp.route('/generate', methods=['POST'])
 def generate_assignments():
-    """
-    Generate new random assignments.
-    Algorithm:
-    1. Deactivate all previous assignments
-    2. Get active persons and tasks
-    3. Distribute tasks evenly considering effort points
-    4. Create new assignments
-    """
-    data = request.get_json() or {}
-    strategy = data.get('strategy', 'balanced')
-    clear_previous = data.get('clear_previous', True)
-    
+    """Generate new random assignments."""
     try:
+        data = request.get_json() or {}
+        clear_previous = data.get('clear_previous', True)
+        
         # Get active persons and tasks
         persons = Person.query.filter_by(is_active=True).all()
         tasks = Task.query.filter_by(is_active=True).all()
         
         if not persons:
-            return jsonify({'success': False, 'error': 'No hay personas activas para asignar tareas'}), 400
+            return jsonify({'success': False, 'error': 'No hay personas activas'}), 400
         if not tasks:
-            return jsonify({'success': False, 'error': 'No hay tareas activas para asignar'}), 400
+            return jsonify({'success': False, 'error': 'No hay tareas activas'}), 400
+        
+        # Store data in memory BEFORE any DB operations
+        persons_list = [{'id': p.id, 'name': p.name} for p in persons]
+        tasks_list = [{'id': t.id, 'name': t.name, 'effort_points': t.effort_points} for t in tasks]
         
         # Deactivate previous assignments
         if clear_previous:
             Assignment.query.update({'is_active': False})
             db.session.commit()
         
-        # Prepare data BEFORE modifying session
-        # Store person and task data in memory to avoid lazy loading issues
-        persons_data = {p.id: {'id': p.id, 'name': p.name, 'color': p.color} for p in persons}
-        tasks_data = {t.id: {'id': t.id, 'name': t.name, 'room': t.room, 'effort_points': t.effort_points} for t in tasks}
+        # Shuffle and assign
+        import random
+        random_tasks = list(tasks_list)
+        random.shuffle(random_tasks)
         
-        # Shuffle tasks for randomness
-        tasks_list = list(tasks_data.values())
-        random.shuffle(tasks_list)
+        effort = {p['id']: 0 for p in persons_list}
+        assignments_data = []
         
-        # Track effort per person for balanced distribution
-        effort_tracking = {p_id: 0 for p_id in persons_data.keys()}
-        
-        # Collect assignment data for response
-        assignments_for_response = []
-        
-        # Assign tasks
-        for task in tasks_list:
-            # Find person with least effort
-            min_effort = min(effort_tracking.values())
-            candidates = [p_id for p_id, effort in effort_tracking.items() if effort == min_effort]
-            selected_person_id = random.choice(candidates)
-            selected_person = persons_data[selected_person_id]
+        for task in random_tasks:
+            # Find person with minimum effort
+            min_effort = min(effort.values())
+            candidates = [p for p in persons_list if effort[p['id']] == min_effort]
+            person = random.choice(candidates)
             
-            # Create assignment in database
+            # Create assignment
             assignment = Assignment(
-                person_id=selected_person_id,
+                person_id=person['id'],
                 task_id=task['id'],
                 assigned_at=datetime.utcnow(),
                 is_active=True
             )
             db.session.add(assignment)
             
-            # Track for response (using in-memory data, no lazy loading)
-            assignments_for_response.append({
-                'person_id': selected_person_id,
-                'person_name': selected_person['name'],
+            # Track for response
+            assignments_data.append({
+                'person_id': person['id'],
+                'person_name': person['name'],
                 'task_id': task['id'],
                 'task_name': task['name'],
                 'effort_points': task['effort_points']
             })
             
-            # Update effort tracking
-            effort_tracking[selected_person_id] += task['effort_points']
+            effort[person['id']] += task['effort_points']
         
-        # Commit to database
+        # Single commit for all
         db.session.commit()
         
-        # Format response using collected data (no database access needed)
-        assignments_by_person = {}
-        for item in assignments_for_response:
-            pid = item['person_id']
-            if pid not in assignments_by_person:
-                assignments_by_person[pid] = {
+        # Build response from memory data
+        by_person = {}
+        for row in assignments_data:
+            pid = row['person_id']
+            if pid not in by_person:
+                by_person[pid] = {
                     'person_id': pid,
-                    'person_name': item['person_name'],
+                    'person_name': row['person_name'],
                     'tasks': [],
                     'total_effort': 0
                 }
-            assignments_by_person[pid]['tasks'].append({
-                'id': item['task_id'],
-                'name': item['task_name'],
-                'effort_points': item['effort_points']
+            by_person[pid]['tasks'].append({
+                'id': row['task_id'],
+                'name': row['task_name'],
+                'effort_points': row['effort_points']
             })
-            assignments_by_person[pid]['total_effort'] += item['effort_points']
+            by_person[pid]['total_effort'] += row['effort_points']
         
         return jsonify({
             'success': True,
-            'data': {
-                'assignments': list(assignments_by_person.values()),
-                'generated_at': datetime.utcnow().isoformat() + 'Z'
-            },
-            'message': 'Asignaciones generadas exitosamente'
+            'data': {'assignments': list(by_person.values())},
+            'message': 'Asignaciones generadas'
         }), 201
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        tb = traceback.format_exc()
+        # Print to stderr for debugging
+        import sys
+        print(f"ERROR: {tb}", file=sys.stderr)
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': tb
+        }), 500
 
 @assignments_bp.route('/<int:assignment_id>', methods=['DELETE'])
 def delete_assignment(assignment_id):
@@ -164,14 +155,3 @@ def complete_assignment(assignment_id):
             'completed_at': assignment.completed_at.isoformat() + 'Z'
         }
     })
-
-@assignments_bp.route('/reset', methods=['POST'])
-def reset_assignments():
-    """Debug endpoint to reset all assignments."""
-    try:
-        Assignment.query.delete()
-        db.session.commit()
-        return jsonify({'success': True, 'message': 'Todas las asignaciones eliminadas'})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
