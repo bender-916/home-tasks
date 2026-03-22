@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  home-tasks:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: home-tasks
+    ports:
+      - "5000:5000"
+    volumes:
+      - home-tasks-data:/data
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DATABASE_PATH=/data/home_tasks.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  home-tasks-data:

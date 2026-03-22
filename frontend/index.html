@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Tasks - Sistema de Reparto de Tareas</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div x-data="app()" x-init="init()" x-cloak class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex items-center justify-between">
+                <h1 class="text-3xl font-bold text-gray-800">🏠 Home Tasks</h1>
+                <div class="flex items-center gap-4">
+                    <button @click="generateAssignments()" 
+                            class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center gap-2">
+                        <span>🎲</span> Asignar Tareas
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="text-2xl font-bold text-blue-600" x-text="stats.persons?.active || 0"></div>
+                <div class="text-gray-600">Personas Activas</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="text-2xl font-bold text-purple-600" x-text="stats.tasks?.active || 0"></div>
+                <div class="text-gray-600">Tareas Activas</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="text-2xl font-bold text-green-600" x-text="stats.assignments?.active || 0"></div>
+                <div class="text-gray-600">Asignaciones Activas</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Persons Section -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">👥 Personas</h2>
+                    <button @click="showPersonModal = true; resetPersonForm()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                        + Nueva
+                    </button>
+                </div>
+                
+                <div class="space-y-2">
+                    <template x-for="person in persons" :key="person.id">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="w-4 h-4 rounded-full" :style="'background-color: ' + person.color"></div>
+                                <span x-text="person.name" class="font-medium"></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="editPerson(person)" class="text-blue-500 hover:text-blue-700">✏️</button>
+                                <button @click="deletePerson(person.id)" class="text-red-500 hover:text-red-700">🗑️</button>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="persons.length === 0" class="text-gray-500 text-center py-4">
+                        No hay personas registradas
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks Section -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">📋 Tareas</h2>
+                    <button @click="showTaskModal = true; resetTaskForm()" 
+                            class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-sm">
+                        + Nueva
+                    </button>
+                </div>
+                
+                <div class="space-y-2">
+                    <template x-for="task in tasks" :key="task.id">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <div class="font-medium" x-text="task.name"></div>
+                                <div class="text-sm text-gray-500" x-show="task.room">
+                                    📍 <span x-text="task.room"></span>
+                                    <span class="ml-2" x-text="'⚡ ' + task.effort_points + ' pts'"></span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="editTask(task)" class="text-blue-500 hover:text-blue-700">✏️</button>
+                                <button @click="deleteTask(task.id)" class="text-red-500 hover:text-red-700">🗑️</button>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="tasks.length === 0" class="text-gray-500 text-center py-4">
+                        No hay tareas registradas
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assignments Section -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">📝 Asignaciones</h2>
+                </div>
+                
+                <div class="space-y-4">
+                    <template x-for="assignment in currentAssignments" :key="assignment.id">
+                        <div class="border rounded-lg p-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full" :style="'background-color: ' + assignment.person?.color"></div>
+                                    <span class="font-medium" x-text="assignment.person?.name"></span>
+                                </div>
+                                <span class="text-gray-600" x-text="assignment.task?.name"></span>
+                            </div>
+                            <div class="flex justify-end mt-2">
+                                <button @click="completeAssignment(assignment.id)" 
+                                        class="text-green-500 hover:text-green-700 text-sm">
+                                    ✅ Completar
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="currentAssignments.length === 0" class="text-gray-500 text-center py-4">
+                        Sin asignaciones. ¡Genera nuevas!
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Person Modal -->
+        <div x-show="showPersonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 class="text-xl font-bold mb-4" x-text="personForm.id ? 'Editar Persona' : 'Nueva Persona'"></h3>
+                <form @submit.prevent="savePerson()">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Nombre *</label>
+                        <input type="text" x-model="personForm.name" required
+                               class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Color</label>
+                        <input type="color" x-model="personForm.color"
+                               class="w-full h-10 border rounded-lg cursor-pointer">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" @click="showPersonModal = false" 
+                                class="px-4 py-2 border rounded-lg hover:bg-gray-100">Cancelar</button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Task Modal -->
+        <div x-show="showTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 class="text-xl font-bold mb-4" x-text="taskForm.id ? 'Editar Tarea' : 'Nueva Tarea'"></h3>
+                <form @submit.prevent="saveTask()">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Nombre *</label>
+                        <input type="text" x-model="taskForm.name" required
+                               class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Descripción</label>
+                        <textarea x-model="taskForm.description" rows="2"
+                                  class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Habitación</label>
+                        <input type="text" x-model="taskForm.room"
+                               class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Puntos de Esfuerzo</label>
+                        <input type="number" x-model="taskForm.effort_points" min="1" max="10"
+                               class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" @click="showTaskModal = false" 
+                                class="px-4 py-2 border rounded-lg hover:bg-gray-100">Cancelar</button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div x-show="toast.show" 
+             x-transition
+             :class="'fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ' + (toast.type === 'error' ? 'bg-red-500' : 'bg-green-500') + ' text-white'">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        function app() {
+            return {
+                // State
+                persons: [],
+                tasks: [],
+                currentAssignments: [],
+                stats: { persons: {}, tasks: {}, assignments: {} },
+                
+                // Modals
+                showPersonModal: false,
+                showTaskModal: false,
+                
+                // Forms
+                personForm: { name: '', color: '#3B82F6' },
+                taskForm: { name: '', description: '', room: '', effort_points: 1 },
+                
+                // Toast
+                toast: { show: false, message: '', type: 'success' },
+
+                // Initialize
+                async init() {
+                    await Promise.all([
+                        this.loadPersons(),
+                        this.loadTasks(),
+                        this.loadCurrentAssignments(),
+                        this.loadStats()
+                    ]);
+                },
+
+                // API calls
+                async api(endpoint, options = {}) {
+                    try {
+                        const response = await fetch('/api' + endpoint, {
+                            ...options,
+                            headers: { 'Content-Type': 'application/json', ...options.headers }
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Error');
+                        return data;
+                    } catch (error) {
+                        this.showToast(error.message, 'error');
+                        throw error;
+                    }
+                },
+
+                // Persons
+                async loadPersons() {
+                    const data = await this.api('/persons');
+                    this.persons = data.data || [];
+                },
+
+                resetPersonForm() {
+                    this.personForm = { name: '', color: '#3B82F6' };
+                },
+
+                editPerson(person) {
+                    this.personForm = { ...person };
+                    this.showPersonModal = true;
+                },
+
+                async savePerson() {
+                    if (this.personForm.id) {
+                        await this.api(`/persons/${this.personForm.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(this.personForm)
+                        });
+                        this.showToast('Persona actualizada');
+                    } else {
+                        await this.api('/persons', {
+                            method: 'POST',
+                            body: JSON.stringify(this.personForm)
+                        });
+                        this.showToast('Persona creada');
+                    }
+                    this.showPersonModal = false;
+                    await this.loadPersons();
+                    await this.loadStats();
+                },
+
+                async deletePerson(id) {
+                    if (!confirm('¿Eliminar esta persona?')) return;
+                    await this.api(`/persons/${id}`, { method: 'DELETE' });
+                    this.showToast('Persona eliminada');
+                    await this.loadPersons();
+                    await this.loadStats();
+                },
+
+                // Tasks
+                async loadTasks() {
+                    const data = await this.api('/tasks');
+                    this.tasks = data.data || [];
+                },
+
+                resetTaskForm() {
+                    this.taskForm = { name: '', description: '', room: '', effort_points: 1 };
+                },
+
+                editTask(task) {
+                    this.taskForm = { ...task };
+                    this.showTaskModal = true;
+                },
+
+                async saveTask() {
+                    if (this.taskForm.id) {
+                        await this.api(`/tasks/${this.taskForm.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(this.taskForm)
+                        });
+                        this.showToast('Tarea actualizada');
+                    } else {
+                        await this.api('/tasks', {
+                            method: 'POST',
+                            body: JSON.stringify(this.taskForm)
+                        });
+                        this.showToast('Tarea creada');
+                    }
+                    this.showTaskModal = false;
+                    await this.loadTasks();
+                    await this.loadStats();
+                },
+
+                async deleteTask(id) {
+                    if (!confirm('¿Eliminar esta tarea?')) return;
+                    await this.api(`/tasks/${id}`, { method: 'DELETE' });
+                    this.showToast('Tarea eliminada');
+                    await this.loadTasks();
+                    await this.loadStats();
+                },
+
+                // Assignments
+                async loadCurrentAssignments() {
+                    const data = await this.api('/assignments/current');
+                    this.currentAssignments = data.data || [];
+                },
+
+                async generateAssignments() {
+                    const data = await this.api('/assignments/generate', { method: 'POST' });
+                    this.showToast(data.message || 'Asignaciones generadas');
+                    await this.loadCurrentAssignments();
+                    await this.loadStats();
+                },
+
+                async completeAssignment(id) {
+                    await this.api(`/assignments/${id}/complete`, { method: 'POST' });
+                    this.showToast('Tarea completada');
+                    await this.loadCurrentAssignments();
+                    await this.loadStats();
+                },
+
+                // Stats
+                async loadStats() {
+                    const data = await this.api('/stats');
+                    this.stats = data.data || {};
+                },
+
+                // Toast
+                showToast(message, type = 'success') {
+                    this.toast = { show: true, message, type };
+                    setTimeout(() => { this.toast.show = false; }, 3000);
+                }
+            };
+        }
+    </script>
+</body>
+</html>

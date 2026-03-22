@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "home-tasks.fullname" . }}-config
+  labels:
+    {{- include "home-tasks.labels" . | nindent 4 }}
+data:
+  FLASK_ENV: {{ .Values.config.flaskEnv | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  DATABASE_PATH: "/data/home_tasks.db"
