@@ -36,15 +36,19 @@ service:
   targetPort: 5000
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "ovh"
   hosts:
-    - host: home-tasks.local
+    - host: home-task.plasm.es
       paths:
         - path: /
           pathType: Prefix
-  tls: []
+  tls:
+    - secretName: home-task-tls
+      hosts:
+        - home-task.plasm.es
 
 resources:
   requests:
