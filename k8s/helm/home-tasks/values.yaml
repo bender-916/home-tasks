@@ -3,11 +3,14 @@
 replicaCount: 1
 
 image:
-  repository: home-tasks
-  pullPolicy: IfNotPresent
+  repository: ghcr.io/bender-916/home-tasks
+  pullPolicy: Always
   tag: "latest"
 
+# For private registries, create a secret with:
+# kubectl create secret docker-registry ghcr-secret --docker-server=ghcr.io --docker-username=USERNAME --docker-password=TOKEN
 imagePullSecrets: []
+  # - name: ghcr-secret
 nameOverride: ""
 fullnameOverride: ""
 
