@@ -2,6 +2,8 @@
 
 Sistema de reparto de tareas del hogar que permite gestionar habitantes y tareas, con asignación aleatoria automática de responsabilidades.
 
+**Última actualización:** 25 Marzo 2026 - Modo oscuro añadido 🌙
+
 ## ✨ Características
 
 - 👥 **Gestión de Personas**: CRUD completo de habitantes del hogar
